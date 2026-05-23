@@ -1,0 +1,85 @@
+# sample surface deposition script for atoms
+dimension	3
+units		metal
+atom_style   atomic
+boundary        p p p
+neighbor	2 bin#0.3
+neigh_modify	delay 5 #delay
+
+# Define lattice constants
+variable a_L12 equal 3.98012 # 2019-First-principles investigations on stability, elastic properties and electronic structures of L12-TiAl3 and D022-TiAl3 under pressure
+variable a_D022 equal 3.84327
+variable c_D022 equal 8.63905
+variable c_a equal 2.247838 # 8.63905/3.84327
+
+# Create the simulation box
+
+lattice custom ${a_D022} &
+    a1 1.0 0.0 0.0 &
+    a2 0.0 1.0 0.0 &
+    a3 0.0 0.0 ${c_a} &
+    basis 0.00000 0.00000 0.00000 &
+    basis 0.50000 0.50000 0.50000 &
+    basis 0.50000 0.50000 0.00000 &
+    basis 0.50000 0.00000 0.75000 &
+    basis 0.00000 0.50000 0.75000 &
+    basis 0.00000 0.00000 0.50000 &
+    basis 0.00000 0.50000 0.25000 &
+    basis 0.50000 0.00000 0.25000
+
+region box block 0 21 0 21 0 93  units lattice
+create_box 2 box # Define 3 atom types
+
+create_atoms 2 region box basis 1 2 basis 2 2 & 
+    basis 3 1 basis 4 1 basis 5 1 basis 6 1 basis 7 1 basis 8 1
+
+# Define masses
+
+mass 1 26.9815 # Al
+mass 2 47.867  # Ti
+
+# 5.Define potential (example using an EAM potential)
+pair_style meam
+pair_coeff * * Kim_AlTi_library.meam Al Ti Kim_AlTi.meam Al Ti
+
+# Initial settings
+variable temperature equal 300
+variable tstep equal 0.001
+timestep 0.001
+
+
+# Minimization
+reset_timestep 0
+
+dump 1 all custom 1000 D022_minimize.*.dump id type x y z
+dump_modify 1 sort id
+
+thermo 100
+thermo_style custom step pe ke temp lx ly lz vol press pxx pyy pzz density 
+
+min_style cg
+minimize 1e-8 1e-8 5000 10000
+
+#Write data after equilibration
+write_data D022_minimize.data
+undump 1
+
+
+
+# EQUILIBRATION - NPT ensemble
+reset_timestep 0
+
+dump 3 all custom 1000 D022_NPT.*.dump id type x y z
+dump_modify 3 sort id
+thermo 100
+thermo_style custom step pe ke temp lx ly lz vol press pxx pyy pzz density 
+
+velocity all create ${temperature} 12345 mom yes rot no
+fix 3 all npt temp ${temperature} ${temperature} 1  x 0 0 0.05 y 0 0 0.05 drag 0.05
+run 20000
+
+write_data D022_equilibrated.data
+
+unfix 3
+undump 3
+
