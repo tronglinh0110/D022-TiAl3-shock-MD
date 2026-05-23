@@ -1,0 +1,3 @@
+atomsk --polycrystal D022_TiAl3.xsf polycrystal.txt D022-TiAl3_poly.lmp -wrap
+
+atomsk D022-TiAl3_poly.lmp -duplicate 1 1 4  D022-TiAl3_poly_full.lmp
