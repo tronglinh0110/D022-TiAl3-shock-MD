@@ -1,0 +1,75 @@
+# ---------- SHOCK SIMULATION using wall/piston + unloading phase ----------
+units           metal
+dimension       3
+boundary        p p s
+atom_style      atomic
+neighbor        2.0 bin
+neigh_modify    delay 5
+
+# ---- Read equilibrated structure ----
+read_data D022_equilibrated.data
+
+# ---- Re-specify potential ----
+pair_style      meam
+pair_coeff      * * Kim_AlTi_library.meam Al Ti Kim_AlTi.meam Al Ti
+
+# ---- Simulation settings ----
+timestep        0.001        # 1 fs
+variable T equal 300
+variable Up equal 20.0       # Å/ps (~1.5 km/s) piston velocity
+variable zlo equal zlo
+variable zhi equal zhi
+
+# ===========================================================
+#   PHASE 1: SHOCK LOADING (momentum mirror active)
+# ===========================================================
+
+# ---- Define moving piston wall at lower z ----
+
+fix piston all wall/piston zlo vel ${Up} units box
+# Optional: free surface at top (no reflection from top)
+fix topwall all wall/reflect zhi EDGE
+
+# ---- Integrate under NVE (adiabatic) ----
+fix int all nve
+
+# ---- Output ----
+thermo          100
+thermo_style    custom step time temp press pxx pyy pzz pe ke etotal lx ly lz
+dump            1 all custom 100 shock_load_*.dump id type x y z vx vy vz
+dump_modify     1 sort id
+
+# ---- Run loading phase ----
+variable t_load equal 6
+variable nsteps_load equal ${t_load}/0.001
+print "=== Phase 1: Shock loading for ${t_load} ps (${nsteps_load} steps) ==="
+run ${nsteps_load}
+
+# ===========================================================
+#   PHASE 2: UNLOADING / SPALLATION (piston removed)
+# ===========================================================
+
+# Remove moving piston -> convert to free surface at bottom
+unfix piston
+print "=== Phase 2: Unloading / Spallation ==="
+
+# (Optionally, you may keep the top wall free too)
+#unfix topwall
+
+# Continue NVE integration (same fix int)
+#dump            2 all custom 100 shock_release_*.dump id type x y z vx vy vz
+#dump_modify     2 sort id
+
+# Define total duration
+variable t_total equal 30       # total simulation time in ps
+variable nsteps_total equal ${t_total}/0.001
+variable nsteps_release equal ${nsteps_total}-${nsteps_load}
+
+print "Running unloading phase for ${nsteps_release} steps"
+run ${nsteps_release}
+
+# ===========================================================
+#   END & SAVE
+# ===========================================================
+write_restart shock_end.restart
+write_data shock_end.data
