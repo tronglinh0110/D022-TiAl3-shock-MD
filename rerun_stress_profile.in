@@ -1,0 +1,37 @@
+units           metal
+dimension       3
+boundary        p p s
+atom_style      atomic
+
+read_data       D022_equilibrated.data
+
+pair_style      meam
+pair_coeff      * * Kim_AlTi_library.meam Al Ti Kim_AlTi.meam Al Ti
+
+# ---- stress per atom ----
+compute         peratom all stress/atom NULL
+
+# ---- binning ----
+variable        dz equal 10.0
+compute         bins all chunk/atom bin/1d z lower ${dz} units box
+
+# ---- average ----
+fix prof all ave/chunk 1 1 1 bins c_peratom[3] density/number file stress_profile_raw.dat
+
+thermo          100
+thermo_style    custom step temp pzz
+
+# ---- RERUN (PASTE FILE LIST HERE) ----
+rerun shock_load_0.dump shock_load_100.dump shock_load_200.dump shock_load_300.dump shock_load_400.dump &
+      shock_load_500.dump shock_load_600.dump shock_load_700.dump shock_load_800.dump shock_load_900.dump &
+      shock_load_1000.dump shock_load_1100.dump shock_load_1200.dump shock_load_1300.dump shock_load_1400.dump &
+      shock_load_1500.dump shock_load_1600.dump shock_load_1700.dump shock_load_1800.dump shock_load_1900.dump &
+      shock_load_2000.dump shock_load_2100.dump shock_load_2200.dump shock_load_2300.dump shock_load_2400.dump &
+      shock_load_2500.dump shock_load_2600.dump shock_load_2700.dump shock_load_2800.dump shock_load_2900.dump &
+      shock_load_3000.dump shock_load_3100.dump shock_load_3200.dump shock_load_3300.dump shock_load_3400.dump &
+      shock_load_3500.dump shock_load_3600.dump shock_load_3700.dump shock_load_3800.dump shock_load_3900.dump &
+      shock_load_4000.dump shock_load_4100.dump shock_load_4200.dump shock_load_4300.dump shock_load_4400.dump &
+      shock_load_4500.dump shock_load_4600.dump shock_load_4700.dump shock_load_4800.dump shock_load_4900.dump &
+      shock_load_5000.dump shock_load_5100.dump shock_load_5200.dump shock_load_5300.dump shock_load_5400.dump &
+      shock_load_5500.dump shock_load_5600.dump shock_load_5700.dump shock_load_5800.dump shock_load_5900.dump &
+      shock_load_6000.dump dump x y z vx vy vz box yes replace yes
